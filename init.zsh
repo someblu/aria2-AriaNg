@@ -34,10 +34,10 @@ set_key_value "input-file" "${sessPath}"
 set_key_value "save-session" "${sessPath}"
 
 set_key_value "dir" "${HOME}/Downloads"
-set_key_value "daemon" "true"
 set_key_value "rpc-secret" "${1:-$(whoami)}"
 # set_key_value "http-proxy" "http-proxy=127.0.0.1:6152"
 
+# set_key_value "daemon" "true"
 # set_key_value "log" "${HOME}/.aria2/aria2.log"
 # set_key_value "rpc-listen-all" "true"
 # set_key_value "rpc-secure" "true"
@@ -56,6 +56,12 @@ tee "/usr/local/opt/aria2/homebrew.mxcl.aria2.plist" << END
   <dict>
     <key>Label</key>
     <string>homebrew.mxcl.aria2</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>/usr/local/opt/aria2/bin/aria2c</string>
+    </array>
+    <key>ProcessType</key>
+    <string>Adaptive</string>
     <key>KeepAlive</key>
     <dict>
       <key>SuccessfulExit</key>
@@ -65,18 +71,26 @@ tee "/usr/local/opt/aria2/homebrew.mxcl.aria2.plist" << END
       <key>AfterInitialDemand</key>
       <true/>
     </dict>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>ProgramArguments</key>
-    <array>
-      <string>/usr/local/opt/aria2/bin/aria2c</string>
-    </array>
+    <key>Sockets</key>
+    <dict>
+        <key>Listeners</key>
+        <dict>
+            <key>SockNodeName</key>
+            <string>${$(perl -ne 'print if s/^rpc-listen-all=true/0.0.0.0/' "${confPath}"):-"127.0.0.1"}</string>
+            <key>SockServiceName</key>
+            <string>${$(perl -ne 'print if s/^rpc-listen-port=([0-9]+$)/${1}/' "${confPath}"):-6800}</string>
+        </dict>
+    </dict>
+    <key>inetdCompatibility</key>
+    <dict>
+        <key>Wait</key>
+        <true/>
+    </dict>
   </dict>
 </plist>
 END
 
 brew services start aria2
-./update_trackers.zsh
 
 brew cask install ariang
 
@@ -87,6 +101,12 @@ tee "${HOME}/Library/LaunchAgents/aria2.updatetrackers.plist" << END
   <dict>
     <key>Label</key>
     <string>aria2.updatetrackers</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>${workDir}/update_trackers.zsh</string>
+    </array>
+    <key>ProcessType</key>
+    <string>Background</string>
     <key>KeepAlive</key>
     <dict>
       <key>OtherJobEnabled</key>
@@ -97,10 +117,6 @@ tee "${HOME}/Library/LaunchAgents/aria2.updatetrackers.plist" << END
     </dict>
     <key>ThrottleInterval</key>
     <integer>1800</integer>
-    <key>ProgramArguments</key>
-    <array>
-      <string>${workDir}/update_trackers.zsh</string>
-    </array>
   </dict>
 </plist>
 END
